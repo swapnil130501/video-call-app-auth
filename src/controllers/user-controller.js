@@ -28,7 +28,18 @@ const create = async (req, res) => {
 
 const signIn = async (req, res) => {
     try {
-        const response = await userService.signIn(req.body.email, req.body.password);
+        const { email, password } = req.body;
+        const response = await userService.signIn(email, password);
+
+        const { accessToken, refreshToken } = response;
+        
+        res.cookie("refreshToken", refreshToken, {
+            httpOnly: true,  
+            secure: true, 
+            sameSite: "Strict",
+            maxAge: 7 * 24 * 60 * 60 * 1000 
+        });
+
         return res.status(200).json({
             success: true,
             data: response,
@@ -42,6 +53,35 @@ const signIn = async (req, res) => {
             data: {},
             success: false,
             err: error
+        });
+    }
+}
+
+async function generateRefreshToken(req, res) {
+    try {
+        const { refreshToken } = req.body;
+
+        if (!refreshToken) {
+            return res.status(400).json({
+                success: false,
+                message: "Refresh token is required",
+            });
+        }
+
+        const newAccessToken = await userService.refreshToken(refreshToken);
+
+        return res.status(200).json({
+            success: true,
+            data: { accessToken: newAccessToken },
+            message: "Successfully generated new access token",
+        });
+
+    } catch (error) {
+        console.log("Error in refreshing token:", error);
+
+        return res.status(401).json({
+            message: "Invalid or expired refresh token",
+            success: false,
         });
     }
 }
@@ -161,4 +201,5 @@ module.exports = {
     updateUser,
     fetchUser,
     fetchAllUsers,
+    generateRefreshToken
 }

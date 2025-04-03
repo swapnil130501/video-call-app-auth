@@ -36,4 +36,9 @@ router.get(
     UserController.fetchAllUsers
 );
 
+router.get(
+    '/refresh-token',
+    UserController.generateRefreshToken
+)
+
 module.exports = router;

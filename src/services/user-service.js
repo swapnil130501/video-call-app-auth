@@ -2,6 +2,8 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 
 const { JWT_KEY } = require('../config/serverConfig');
+const { REFRESH_TOKEN_SECRET } = require('../config/serverConfig');
+
 const  UserRepository  = require('../repository/user-repository');
 
 class UserService{
@@ -88,11 +90,31 @@ class UserService{
                 throw {error: 'Incorrect password'};
             }
             // step 3-> if passwords match then create a token and send it to the user
-            const newJWT = this.createToken({email: user.email, id: user.id});
-            return newJWT;
+            const { accessToken, refreshToken } = this.createToken({ email: user.email, id: user.id });
+            return { accessToken, refreshToken }; 
         } catch (error) {
             console.log("Something went wrong in the sign in process");
             throw error;
+        }
+    }
+
+    async refreshToken(oldRefreshToken) {
+        try {
+            const decoded = jwt.verify(oldRefreshToken, REFRESH_TOKEN_SECRET);
+
+            const user = this.userRepository.getById(decoded.userId);
+
+            const newAccessToken = jwt.sign(
+                { userId: user.id },
+                JWT_KEY,
+                { expiresIn: '15m' }
+            );
+            
+            return newAccessToken;
+
+        } catch (error) {
+            console.log("Something went wrong in refresh token process", error);
+            throw { error: "Invalid or expired refresh token" };
         }
     }
 
@@ -133,18 +155,29 @@ class UserService{
 
     createToken(user) {
         try {
-            const result = jwt.sign(user, JWT_KEY, {expiresIn: '1d'});
-            return result;
+            const accessToken = jwt.sign(
+                { userId: user.id },
+                JWT_KEY,
+                { expiresIn: '1m' }
+            );
+    
+            const refreshToken = jwt.sign(
+                { userId: user.id },
+                REFRESH_TOKEN_SECRET,
+                { expiresIn: '7d' }
+            );
+    
+            return { accessToken, refreshToken };
         } catch (error) {
             console.log("Something went wrong in token creation");
             throw error;
         }
     }
 
-    verifyToken(token) {
+    verifyToken(token, type = 'access') {
         try {
-            const response = jwt.verify(token, JWT_KEY);
-            return response;
+            const secret = type === 'access' ? JWT_KEY : REFRESH_TOKEN_SECRET;
+            return jwt.verify(token, secret);
         } catch (error) {
             console.log("Something went wrong in token validation", error);
             throw error;
