@@ -59,7 +59,7 @@ const signIn = async (req, res) => {
 
 async function generateRefreshToken(req, res) {
     try {
-        const { refreshToken } = req.body;
+        const { refreshToken } = req.cookies;
 
         if (!refreshToken) {
             return res.status(400).json({

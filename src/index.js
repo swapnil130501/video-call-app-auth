@@ -6,8 +6,10 @@ const { connect } = require('./config/database');
 const cors = require('cors');
 
 const { PORT } = require('./config/serverConfig');
+const cookieParser = require('cookie-parser');
 
 const app = express();
+app.use(cookieParser());
 
 const corsOptions ={
     origin:'http://localhost:5173', 
